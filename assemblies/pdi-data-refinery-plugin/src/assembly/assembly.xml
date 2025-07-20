@@ -1,0 +1,88 @@
+
+<!--===========================================================================
+HITACHI VANTARA PROPRIETARY AND CONFIDENTIAL
+
+Copyright 2002 - 2023 Hitachi Vantara. All rights reserved.
+
+NOTICE: All information including source code contained herein is, and
+remains the sole property of Hitachi Vantara and its licensors. The intellectual
+and technical concepts contained herein are proprietary and confidential
+to, and are trade secrets of Hitachi Vantara and may be covered by U.S. and foreign
+patents, or patents in process, and are protected by trade secret and
+copyright laws. The receipt or possession of this source code and/or related
+information does not convey or imply any rights to reproduce, disclose or
+distribute its contents, or to manufacture, use, or sell anything that it
+may describe, in whole or in part. Any reproduction, modification, distribution,
+or public display of this information without the express written authorization
+from Hitachi Vantara is strictly prohibited and in violation of applicable laws and
+international treaties. Access to the source code contained herein is strictly
+prohibited to anyone except those individuals and entities who have executed
+confidentiality and non-disclosure agreements or other agreements with Hitachi Vantara,
+explicitly covering such access.
+============================================================================-->
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/2.2.0 https://maven.apache.org/xsd/assembly-2.2.0.xsd">
+<id>pdi-data-refinery-plugin</id>
+  <formats>
+    <format>zip</format>
+  </formats>
+  <baseDirectory>pdi-data-refinery-plugin</baseDirectory>
+  <fileSets>
+    <fileSet>
+      <directory>src/main</directory>
+      <outputDirectory></outputDirectory>
+      <includes>
+        <include>**</include>
+      </includes>
+    </fileSet>
+  </fileSets>
+  <dependencySets>
+    <dependencySet>
+      <scope>runtime</scope>
+      <outputDirectory>lib</outputDirectory>
+      <includes>
+        <include>pentaho:pentaho-modeler</include>
+        <include>jfree:jcommon</include>
+        <include>com.fasterxml.jackson.module:jackson-module-jaxb-annotations</include>
+        <include>com.hitachivantara.security.web:csrf-token-service-client-java-jax-rs-v1</include>
+        <include>com.pentaho:pentaho-dataservice-ee-impl</include>
+      </includes>
+      <useTransitiveDependencies>false</useTransitiveDependencies>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
+    <dependencySet>
+      <scope>runtime</scope>
+      <outputDirectory>.</outputDirectory>
+      <useTransitiveDependencies>false</useTransitiveDependencies>
+      <useProjectArtifact>false</useProjectArtifact>
+      <excludes>
+        <exclude>pentaho:pentaho-modeler</exclude>
+        <exclude>jfree:jcommon</exclude>
+        <exclude>com.fasterxml.jackson.module:jackson-module-jaxb-annotations</exclude>
+        <exclude>com.hitachivantara.security.web:csrf-token-service-client-java-jax-rs-v1</exclude>
+        <exclude>com.pentaho:pentaho-dataservice-ee-impl</exclude>
+        <exclude>*:commands</exclude>
+        <exclude>*:httpclient</exclude>
+        <exclude>*:jersey-json</exclude>
+        <exclude>*:commons-collections</exclude>
+        <exclude>*:httpcore</exclude>
+        <exclude>*:jersey-multipart</exclude>
+        <exclude>*:pentaho-metadata</exclude>
+        <exclude>*:commons-io</exclude>
+        <exclude>*:jackson-databind</exclude>
+        <exclude>*:jsr311-api</exclude>
+        <exclude>*:pentaho-platform-core</exclude>
+        <exclude>*:commons-lang</exclude>
+        <exclude>*:jersey-apache-client</exclude>
+        <exclude>*:kettle-core</exclude>
+        <exclude>*:commons-xul-core</exclude>
+        <exclude>*:jersey-client</exclude>
+        <exclude>*:kettle-engine</exclude>
+        <exclude>*:commons-xul-swt</exclude>
+        <exclude>*:jersey-core</exclude>
+        <exclude>*:kettle-ui-swt</exclude>
+      </excludes>
+    </dependencySet>
+  </dependencySets>
+ </assembly>
