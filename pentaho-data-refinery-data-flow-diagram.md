@@ -5,69 +5,8 @@ This diagram illustrates the data flow through the Pentaho Data Refinery system,
 
 ## Data Flow Diagram
 
-```mermaid
-graph TB
-    %% Data Sources
-    DS1[Database Tables] --> PDI[PDI Transformation]
-    DS2[CSV Files] --> PDI
-    DS3[Other Data Sources] --> PDI
-    
-    %% PDI Processing Layer
-    PDI --> AS[Annotate Stream Step]
-    PDI --> SD[Shared Dimension Step]
-    
-    %% Annotation Processing
-    AS --> AG[Annotation Groups]
-    SD --> SDG[Shared Dimension Groups]
-    
-    %% MetaStore Integration
-    AG --> MS[MetaStore]
-    SDG --> MS
-    MS --> AG
-    MS --> SDG
-    
-    %% Model Building
-    AG --> BM[Build Model Job Entry]
-    SDG --> BM
-    PDI --> BM
-    
-    %% Model Components
-    BM --> MM[Mondrian Schema]
-    BM --> XMI[Metadata XMI]
-    BM --> DSW[DSW Model]
-    
-    %% Variable Storage
-    MM --> VAR[Job Variables<br/>${JobEntryBuildModel.Mondrian.Schema._ModelName_}]
-    XMI --> VAR
-    
-    %% Publishing Layer
-    VAR --> PM[Publish Model Job Entry]
-    MM --> PM
-    XMI --> PM
-    DSW --> PM
-    
-    %% Publishing Services
-    PM --> DPS[DatasourcePublishService]
-    DPS --> MSP[ModelServerPublish]
-    
-    %% Target Systems
-    MSP --> BAS[BA Server]
-    MSP --> OLAP[OLAP Cube]
-    MSP --> DS[Data Source]
-    
-    %% Styling
-    classDef dataSource fill:#e1f5fe
-    classDef processing fill:#f3e5f5
-    classDef storage fill:#e8f5e8
-    classDef publish fill:#fff3e0
-    classDef target fill:#ffebee
-    
-    class DS1,DS2,DS3 dataSource
-    class PDI,AS,SD,BM,PM processing
-    class MS,VAR,AG,SDG storage
-    class DPS,MSP publish
-    class BAS,OLAP,DS target
-```
+<img width="1752" height="3836" alt="Pentaho Data Refinery Data Flow" src="https://github.com/user-attachments/assets/31b7e041-87a9-4ed2-88a1-ee15a83d433b" />
+
 
 ## Detailed Component Flow
 
