@@ -119,6 +119,330 @@ graph LR
 - **Process**: Deploy to BA Server via REST APIs
 - **Output**: Published data sources available for analysis
 
+## Build Model Job Entry - Detailed Architecture
+
+The Build Model Job Entry (`JobEntryBuildModel`) is a critical component in the Pentaho Data Refinery that transforms annotated data into analytical models. It serves as the bridge between data preparation and model publication.
+
+### Core Architecture
+
+```mermaid
+graph TB
+    subgraph "Build Model Job Entry Architecture"
+        subgraph "Input Sources"
+            STEP[Output Step/Data Service]
+            ANNOTATIONS[Model Annotations]
+            CONFIG[Configuration]
+        end
+        
+        subgraph "Build Model Core"
+            BME[JobEntryBuildModel]
+            MODELER[DswModeler]
+            FETCHER[ModelServerFetcher]
+            VALIDATOR[ConnectionValidator]
+        end
+        
+        subgraph "Model Generation Process"
+            ANALYZE[Analyze Data Structure]
+            AUTO_MODEL[Auto Model Generation]
+            EXISTING_MODEL[Use Existing Model]
+            SCHEMA_GEN[Schema Generation]
+        end
+        
+        subgraph "Output Components"
+            XMI[Metadata XMI]
+            MONDRIAN[Mondrian Schema]
+            DSW[DSW Model]
+            VARIABLES[Job Variables]
+        end
+        
+        STEP --> BME
+        ANNOTATIONS --> BME
+        CONFIG --> BME
+        
+        BME --> MODELER
+        BME --> FETCHER
+        BME --> VALIDATOR
+        
+        MODELER --> ANALYZE
+        ANALYZE --> AUTO_MODEL
+        ANALYZE --> EXISTING_MODEL
+        AUTO_MODEL --> SCHEMA_GEN
+        EXISTING_MODEL --> SCHEMA_GEN
+        
+        SCHEMA_GEN --> XMI
+        SCHEMA_GEN --> MONDRIAN
+        SCHEMA_GEN --> DSW
+        SCHEMA_GEN --> VARIABLES
+    end
+```
+
+### Detailed Component Breakdown
+
+#### 1. **JobEntryBuildModel Class Structure**
+
+```java
+@JobEntry(id = "DataRefineryBuildModel",
+    categoryDescription = "JobCategory.Category.Modeling",
+    name = "BuildModelJob.Name",
+    description = "BuildModelJob.Description")
+public class JobEntryBuildModel extends JobEntryBase {
+    
+    // Core Properties
+    private String outputStep;           // Source step or data service
+    private String modelName;           // Target model name
+    private boolean useExistingModel;   // Auto vs existing model
+    private String existingModel;       // Existing model selection
+    private DswModeler modeler;         // Core modeling engine
+    private BiServerConnection conn;    // Server connection info
+}
+```
+
+#### 2. **Execution Flow Architecture**
+
+```mermaid
+sequenceDiagram
+    participant Job as Job Engine
+    participant BME as Build Model Entry
+    participant Modeler as DswModeler
+    participant Fetcher as ModelServerFetcher
+    participant DataSource as Data Source
+    participant MetaStore as MetaStore
+    participant Variables as Job Variables
+
+    Job->>BME: execute()
+    BME->>BME: validateConfiguration()
+    
+    alt Use Existing Model
+        BME->>Fetcher: fetchModelFromServer()
+        Fetcher->>Fetcher: authenticate()
+        Fetcher-->>BME: existingModel
+        BME->>Modeler: updateModel(existingModel, annotations)
+    else Auto Model
+        BME->>BME: getConnectionInfo()
+        BME->>DataSource: analyzeDataStructure()
+        DataSource-->>BME: tableStructure
+        BME->>MetaStore: getAnnotations()
+        MetaStore-->>BME: modelAnnotations
+        BME->>Modeler: createModel(structure, annotations)
+    end
+    
+    Modeler->>Modeler: generateLogicalModel()
+    Modeler->>Modeler: generatePhysicalModel()
+    Modeler->>Modeler: createOlapCube()
+    Modeler-->>BME: domainModel
+    
+    BME->>BME: generateXMI(domainModel)
+    BME->>BME: generateMondrianSchema(domainModel)
+    BME->>Variables: setVariable("XMI." + modelName, xmi)
+    BME->>Variables: setVariable("Schema." + modelName, schema)
+    BME-->>Job: Result(success=true)
+```
+
+#### 3. **Data Source Integration**
+
+The Build Model Job Entry can work with multiple data source types:
+
+```mermaid
+graph LR
+    subgraph "Data Source Types"
+        STEP[Table Output Steps]
+        DS[Data Services]
+        VIEW[Database Views]
+        TABLE[Physical Tables]
+    end
+    
+    subgraph "Connection Analysis"
+        CONN[Database Connection]
+        SCHEMA[Schema Information]
+        META[Table Metadata]
+        COLUMNS[Column Definitions]
+    end
+    
+    subgraph "Model Generation"
+        PHYSICAL[Physical Layer]
+        LOGICAL[Logical Layer]
+        OLAP[OLAP Layer]
+    end
+    
+    STEP --> CONN
+    DS --> CONN
+    VIEW --> CONN
+    TABLE --> CONN
+    
+    CONN --> SCHEMA
+    SCHEMA --> META
+    META --> COLUMNS
+    
+    COLUMNS --> PHYSICAL
+    PHYSICAL --> LOGICAL
+    LOGICAL --> OLAP
+```
+
+#### 4. **Model Types and Generation Strategies**
+
+##### Auto Model Generation
+```mermaid
+graph TD
+    START[Start Auto Model] --> ANALYZE[Analyze Data Structure]
+    ANALYZE --> DETECT[Detect Data Types]
+    DETECT --> CATEGORIZE[Categorize Fields]
+    CATEGORIZE --> MEASURES{Numeric Fields?}
+    MEASURES -->|Yes| CREATE_MEASURES[Create Measures]
+    MEASURES -->|No| ATTRIBUTES[Create Attributes]
+    CREATE_MEASURES --> DIMENSIONS[Create Dimensions]
+    ATTRIBUTES --> DIMENSIONS
+    DIMENSIONS --> HIERARCHY[Build Hierarchies]
+    HIERARCHY --> CUBE[Generate OLAP Cube]
+    CUBE --> FINISH[Complete Model]
+```
+
+##### Existing Model Update
+```mermaid
+graph TD
+    START[Start Model Update] --> FETCH[Fetch Existing Model]
+    FETCH --> VALIDATE[Validate Compatibility]
+    VALIDATE --> COMPATIBLE{Compatible?}
+    COMPATIBLE -->|Yes| MERGE[Merge Annotations]
+    COMPATIBLE -->|No| ERROR[Throw Exception]
+    MERGE --> UPDATE[Update Schema]
+    UPDATE --> PRESERVE[Preserve Customizations]
+    PRESERVE --> FINISH[Complete Update]
+```
+
+#### 5. **Configuration Properties**
+
+| Property | Type | Description | Required |
+|----------|------|-------------|-----------|
+| `outputStep` | String | Source step or data service name | Yes |
+| `modelName` | String | Target model name for publication | Yes |
+| `useExistingModel` | Boolean | Whether to use existing model | No |
+| `existingModel` | String | Existing model ID/name | Conditional |
+| `biServerConnection` | Object | BA Server connection details | Conditional |
+| `createOnPublish` | Boolean | Create model if missing during publish | No |
+
+#### 6. **Variable Management System**
+
+The Build Model Job Entry creates several job variables for downstream consumption:
+
+```mermaid
+graph LR
+    subgraph "Generated Variables"
+        XMI_VAR["JobEntryBuildModel.XMI.{modelName}"]
+        SCHEMA_VAR["JobEntryBuildModel.Mondrian.Schema.{modelName}"]
+        DS_VAR["JobEntryBuildModel.Mondrian.Datasource.{modelName}"]
+        CONN_VAR["JobEntryBuildModel.DatabaseConnection.{modelName}"]
+        DSW_VAR["JobEntryBuildModel.XMI.DSW.{modelName}"]
+    end
+    
+    subgraph "Downstream Consumers"
+        PUBLISH[Publish Model Job Entry]
+        CUSTOM[Custom Job Entries]
+        REPORTING[Reporting Tools]
+    end
+    
+    XMI_VAR --> PUBLISH
+    SCHEMA_VAR --> PUBLISH
+    DS_VAR --> PUBLISH
+    CONN_VAR --> PUBLISH
+    DSW_VAR --> PUBLISH
+    
+    XMI_VAR --> CUSTOM
+    SCHEMA_VAR --> REPORTING
+```
+
+#### 7. **Error Handling and Validation**
+
+```mermaid
+graph TD
+    EXECUTE[Execute Build Model] --> VALIDATE_CONFIG[Validate Configuration]
+    VALIDATE_CONFIG --> CONFIG_OK{Configuration Valid?}
+    CONFIG_OK -->|No| CONFIG_ERROR[Configuration Error]
+    CONFIG_OK -->|Yes| VALIDATE_SOURCE[Validate Data Source]
+    
+    VALIDATE_SOURCE --> SOURCE_OK{Source Valid?}
+    SOURCE_OK -->|No| SOURCE_ERROR[Data Source Error]
+    SOURCE_OK -->|Yes| CHECK_CONNECTION[Check DB Connection]
+    
+    CHECK_CONNECTION --> CONN_OK{Connection OK?}
+    CONN_OK -->|No| CONN_ERROR[Connection Error]
+    CONN_OK -->|Yes| PROCESS_MODEL[Process Model]
+    
+    PROCESS_MODEL --> MODEL_OK{Model Generation OK?}
+    MODEL_OK -->|No| MODEL_ERROR[Model Generation Error]
+    MODEL_OK -->|Yes| SUCCESS[Success]
+    
+    CONFIG_ERROR --> FAIL[Job Fails]
+    SOURCE_ERROR --> FAIL
+    CONN_ERROR --> FAIL
+    MODEL_ERROR --> FAIL
+```
+
+#### 8. **DswModeler Integration**
+
+The `DswModeler` is the core modeling engine:
+
+```java
+public class DswModeler implements AnalysisModeler {
+    
+    // Core modeling methods
+    public Domain createModel(String modelName, TableModelerSource source, 
+                             DatabaseMeta dbMeta, ModelAnnotationGroup annotations);
+    
+    public Domain updateModel(String modelName, Domain existingModel, 
+                             DatabaseMeta dbMeta, ModelAnnotationGroup annotations);
+    
+    public String generateMondrianSchema(Domain domain);
+    
+    public String generateXMI(Domain domain);
+}
+```
+
+#### 9. **Performance Considerations**
+
+- **Memory Management**: Large datasets are processed in streaming mode
+- **Connection Pooling**: Database connections are reused when possible
+- **Caching**: Model metadata is cached to avoid repeated fetches
+- **Incremental Updates**: Only changed portions of existing models are updated
+
+#### 10. **Integration Points**
+
+##### With PDI Transformations
+- Reads output step metadata and annotations
+- Integrates with Data Services for virtual data modeling
+- Supports metadata injection patterns
+
+##### With MetaStore
+- Retrieves shared dimension definitions
+- Stores and manages annotation groups
+- Provides versioning and lineage tracking
+
+##### With BA Server
+- Fetches existing model definitions
+- Validates model compatibility
+- Prepares models for publication
+
+#### 11. **Usage Patterns**
+
+##### Basic Auto Modeling
+```
+1. Configure output step as data source
+2. Set model name
+3. Select "Auto Model" option
+4. Execute job entry
+5. Variables populated for publishing
+```
+
+##### Advanced Model Updates
+```
+1. Configure connection to BA Server
+2. Select existing model from server
+3. Configure output step with new data
+4. Execute to update model with new annotations
+5. Preserve existing customizations
+```
+
+This detailed architecture shows how the Build Model Job Entry serves as the critical transformation component that converts raw, annotated data into publishable analytical models in the Pentaho Data Refinery ecosystem.
+
 ## Error Handling Flow
 
 ```mermaid
